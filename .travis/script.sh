@@ -89,6 +89,34 @@ if [ "$TRAVIS_OS_NAME" = "osx" -a -z "$config" ]; then
 	fi
 fi
 
+if [ "$TRAVIS_OS_NAME" = "windows" ]; then
+	# https://docs.travis-ci.com/user/reference/windows/#how-do-i-use-msys2
+	export msys2='cmd //C RefreshEnv.cmd '
+	export msys2+='& set MSYS=winsymlinks:nativestrict '
+	export msys2+='& C:\\tools\\msys64\\msys2_shell.cmd -defterm -no-start'
+	export mingw64="$msys2 -mingw64 -full-path -here -c "\"\$@"\" --"
+	export msys2+=" -msys2 -c "\"\$@"\" --"
+
+	export OBJC="$compiler"
+
+	build_32_64() {
+		if ! git clean -fxd >/tmp/clean_log 2>&1; then
+			cat /tmp/clean_log
+			exit 1
+		fi
+
+		$mingw64 ./autogen.sh || exit 1
+		$mingw64 .travis/build.sh || exit 1
+	}
+
+	build_32_64
+	build_32_64 --enable-seluid24
+	build_32_64 --disable-threads
+	build_32_64 --disable-sockets
+	build_32_64 --disable-files
+	build_32_64 --disable-shared
+fi
+
 if [ "$config" = "ios" ]; then
 	if xcodebuild -version | grep 'Xcode 6' >/dev/null; then
 		export CPPFLAGS="-D_Null_unspecified=__null_unspecified"

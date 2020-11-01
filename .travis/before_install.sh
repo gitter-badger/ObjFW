@@ -33,6 +33,25 @@ if [ "$TRAVIS_OS_NAME" = "linux" -a -z "$config" ]; then
 	fi
 fi
 
+if [ "$TRAVIS_OS_NAME" = "windows" ]; then
+	# https://docs.travis-ci.com/user/reference/windows/#how-do-i-use-msys2
+	choco uninstall -y mingw
+	choco upgrade --no-progress -y msys2
+	export msys2='cmd //C RefreshEnv.cmd '
+	export msys2+='& set MSYS=winsymlinks:nativestrict '
+	export msys2+='& C:\\tools\\msys64\\msys2_shell.cmd -defterm -no-start'
+	export mingw64="$msys2 -mingw64 -full-path -here -c "\"\$@"\" --"
+	export msys2+=" -msys2 -c "\"\$@"\" --"
+	$msys2 pacman -S --noconfirm --needed \
+		mingw-w64-i686-toolchain mingw-w64-x86_64-toolchain \
+		autoconf automake
+	if [ "$compiler" = "clang" ]; then
+		$msys2 pacman -S --noconfirm --needed \
+			mingw-w64-i686-clang mingw-w64-x86_64-clang
+	fi
+	taskkill //IM gpg-agent.exe //F  # https://travis-ci.community/t/4967
+fi
+
 if [ "$config" = "nintendo_3ds" -o "$config" = "nintendo_ds" ]; then
 	docker pull devkitpro/devkitarm
 fi
